@@ -42,7 +42,7 @@ AGENTS.md
 2. Create your environment file from the example:
 
    ```sh
-   copy .env.example .env
+   cp .env.example .env
    ```
 
 3. Fill in the values in `.env`.

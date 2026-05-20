@@ -42,7 +42,9 @@ EMAIL_RECIPIENTS: Final[list[str]] = [
 # Alert predicates — one per site, return a message string or None
 # ---------------------------------------------------------------------------
 
-COOK_CHILDRENS_URL: Final[str] = "https://www.cookchildrens.org/healthcare-professionals/nursing/nurse-residency-program/"
+COOK_CHILDRENS_URL: Final[str] = (
+    "https://www.cookchildrens.org/healthcare-professionals/nursing/nurse-residency-program/"
+)
 TEXAS_HEALTH_URL: Final[str] = "https://jobs.texashealth.org/professions/graduate-nurse/"
 
 
@@ -62,7 +64,7 @@ def check_texas_health_jobs(soup: BeautifulSoup) -> str | None:
         actual = sibling.get_text(strip=True) if sibling else "<no <p> sibling>"
         return (
             f"Texas Health: Winter 2027 Cohort info has changed!\n"
-            f"  Now reads: \"{actual}\"\n"
+            f'  Now reads: "{actual}"\n'
             f"  {TEXAS_HEALTH_URL}"
         )
     return None
@@ -80,7 +82,7 @@ def check_cook_childrens_jobs(soup: BeautifulSoup) -> str | None:
     if other_cohort:
         return (
             f"Cook Children's: October 2026 Cohorts heading is gone. "
-            f"Found instead: \"{other_cohort}\"\n  {COOK_CHILDRENS_URL}"
+            f'Found instead: "{other_cohort}"\n  {COOK_CHILDRENS_URL}'
         )
     return (
         f"Cook Children's: October 2026 Cohorts heading is gone and no other "
@@ -110,9 +112,7 @@ def send_notification(recipients: list[str], alerts: list[str]) -> None:
         raise ValueError("SMTP_USER and SMTP_PASSWORD must be set before sending email.")
 
     subject = f"Job alert: {len(alerts)} new match(es) found!"
-    body = "The following alerts were triggered:\n\n" + "\n\n".join(
-        f"• {msg}" for msg in alerts
-    )
+    body = "The following alerts were triggered:\n\n" + "\n\n".join(f"• {msg}" for msg in alerts)
 
     msg = EmailMessage()
     msg["Subject"] = subject
