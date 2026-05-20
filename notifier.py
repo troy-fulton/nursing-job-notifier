@@ -138,8 +138,6 @@ def send_notification(recipients: list[str], alerts: list[str]) -> None:
 def main() -> None:
     alerts: list[str] = []
 
-    send_notification(EMAIL_RECIPIENTS, ["Test alert: notifier is working!"])
-
     for url, predicate in SITES:
         try:
             message = scrape(url, predicate)
