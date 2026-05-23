@@ -6,7 +6,7 @@ Monitors nursing job / residency program pages and sends a single combined email
 
 ```
 scraper.py    — generic HTTP fetch + BeautifulSoup evaluation; no email, no config
-notifier.py   — site predicates, SMTP email, entry point
+main.py   — site predicates, SMTP email, entry point
 pyproject.toml — uv project; ruff + mypy config
 ```
 
@@ -27,7 +27,7 @@ Predicates must never send email, log at WARNING/ERROR, or call `sys.exit`. Side
 
 ## Adding a New Site
 
-1. Define a predicate function in `notifier.py` following the `AlertPredicate` signature.
+1. Define a predicate function in `main.py` following the `AlertPredicate` signature.
 2. Add a `Final[str]` URL constant near the top of the config block.
 3. Append `(URL_CONSTANT, predicate_function)` to the `SITES` list.
 
@@ -67,16 +67,16 @@ See `.env.example` for a complete template.
 uv sync
 
 # Run the notifier
-uv run notifier.py
+uv run main.py
 
 # Lint
-uv run ruff check notifier.py scraper.py
+uv run ruff check main.py scraper.py
 
 # Format
-uv run ruff format notifier.py scraper.py
+uv run ruff format main.py scraper.py
 
 # Type-check (strict mode)
-uv run mypy notifier.py scraper.py
+uv run mypy main.py scraper.py
 ```
 
 ## Verifying Changes
@@ -84,8 +84,8 @@ uv run mypy notifier.py scraper.py
 All three checks must pass before a change is considered correct:
 
 ```sh
-uv run ruff check notifier.py scraper.py
-uv run mypy notifier.py scraper.py
+uv run ruff check main.py scraper.py
+uv run mypy main.py scraper.py
 ```
 
 If ruff reports fixable errors (`[*]`), run `uv run ruff check --fix` and verify the result. Do not suppress mypy errors with `# type: ignore` without a comment explaining why.

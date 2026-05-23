@@ -13,12 +13,12 @@ A small Python notifier that checks a set of webpages for changes and sends one 
 The scraping logic is intentionally separate from the email logic:
 
 - `scraper.py` handles fetching and parsing a page, then calls a predicate
-- `notifier.py` defines the site-specific predicates and sends email if any alerts fire
+- `main.py` defines the site-specific predicates and sends email if any alerts fire
 
 ## Project layout
 
 ```text
-notifier.py   # main entry point, predicates, SMTP email
+main.py   # main entry point, predicates, SMTP email
 scraper.py    # generic fetch + parse + predicate runner
 pyproject.toml
 AGENTS.md
@@ -63,7 +63,7 @@ The script reads configuration from environment variables.
 ## Running
 
 ```sh
-uv run notifier.py
+uv run main.py
 ```
 
 If any site returns an alert message, the script combines all messages into a single email.
@@ -83,13 +83,13 @@ def my_site_predicate(soup: BeautifulSoup) -> str | None:
 
 Return a string when the site should alert. Return `None` when it should not.
 
-Keep site-specific HTML logic in `notifier.py`. Keep `scraper.py` generic.
+Keep site-specific HTML logic in `main.py`. Keep `scraper.py` generic.
 
 ## Validation
 
 ```sh
-uv run ruff check notifier.py scraper.py
-uv run mypy notifier.py scraper.py
+uv run ruff check main.py scraper.py
+uv run mypy main.py scraper.py
 ```
 
 ## Notes
