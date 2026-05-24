@@ -6,7 +6,7 @@ Monitors nursing job / residency program pages and sends a single combined email
 
 ```
 scraper.py    — generic HTTP fetch + BeautifulSoup evaluation; no email, no config
-main.py   — site predicates, SMTP email, entry point
+main.py   — site predicates, Gmail API email, entry point
 pyproject.toml — uv project; ruff + mypy config
 ```
 
@@ -51,11 +51,11 @@ All config is injected via environment variables — no `.env` file at runtime.
 
 | Variable | Required | Description |
 |---|---|---|
-| `SMTP_HOST` | no | Default: `smtp.gmail.com` |
-| `SMTP_PORT` | no | Default: `587` |
-| `SMTP_USER` | **yes** | SMTP login / sender address |
-| `SMTP_PASSWORD` | **yes** | App password (not account password) |
-| `EMAIL_FROM` | no | Defaults to `SMTP_USER` |
+| `GOOGLE_CLIENT_ID` | **yes** | OAuth client ID for Google API |
+| `GOOGLE_CLIENT_SECRET` | **yes** | OAuth client secret for Google API |
+| `GOOGLE_REFRESH_TOKEN` | **yes** | Refresh token with Gmail send scope |
+| `GMAIL_USER` | no | Gmail user path. Default: `me` |
+| `EMAIL_FROM` | no | Defaults to `GMAIL_USER` |
 | `EMAIL_RECIPIENTS` | **yes** | Comma-separated list of recipient addresses |
 
 See `.env.example` for a complete template.
@@ -93,6 +93,7 @@ If ruff reports fixable errors (`[*]`), run `uv run ruff check --fix` and verify
 ## Conventions
 
 - **No dotenv** — environment variables are set by the caller (shell, scheduler, or CI). Do not add `python-dotenv` back as a dependency.
+- **Email transport over HTTPS** — notifications are sent via Gmail API calls (port 443), not SMTP sockets.
 - **HTTP errors are non-fatal per site** — `main()` logs the error and continues to the next site rather than aborting.
 - **One email per run** — all alerts are batched into a single message; never send one email per site.
 - **Predicate scope** — predicates may inspect any part of the parsed HTML but must not make additional HTTP requests.

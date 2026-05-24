@@ -8,7 +8,7 @@ A small Python notifier that checks a set of webpages for changes and sends one 
 - Parses the HTML with `BeautifulSoup`
 - Runs a site-specific `should_alert` function for each page
 - Collects all alert messages into one email
-- Sends the email through SMTP
+- Sends the email through the Gmail API (HTTPS)
 
 The scraping logic is intentionally separate from the email logic:
 
@@ -18,7 +18,7 @@ The scraping logic is intentionally separate from the email logic:
 ## Project layout
 
 ```text
-main.py   # main entry point, predicates, SMTP email
+main.py   # main entry point, predicates, Gmail API email
 scraper.py    # generic fetch + parse + predicate runner
 pyproject.toml
 AGENTS.md
@@ -29,7 +29,7 @@ AGENTS.md
 
 - Python 3.11 or newer
 - `uv`
-- SMTP credentials for the account that will send email
+- Google OAuth credentials for Gmail API access
 
 ## Setup
 
@@ -53,11 +53,11 @@ The script reads configuration from environment variables.
 
 | Variable | Required | Description |
 |---|---|---|
-| `SMTP_HOST` | no | SMTP server hostname. Default: `smtp.gmail.com` |
-| `SMTP_PORT` | no | SMTP server port. Default: `587` |
-| `SMTP_USER` | yes | SMTP username / sender address |
-| `SMTP_PASSWORD` | yes | SMTP password or app password |
-| `EMAIL_FROM` | no | From address. Defaults to `SMTP_USER` |
+| `GOOGLE_CLIENT_ID` | yes | OAuth client ID for your Google Cloud app |
+| `GOOGLE_CLIENT_SECRET` | yes | OAuth client secret for your Google Cloud app |
+| `GOOGLE_REFRESH_TOKEN` | yes | Refresh token with `gmail.send` scope |
+| `GMAIL_USER` | no | Gmail API user path. Default: `me` |
+| `EMAIL_FROM` | no | From address displayed in the message header. Defaults to `GMAIL_USER` |
 | `EMAIL_RECIPIENTS` | yes | Comma-separated list of recipients |
 
 ## Running

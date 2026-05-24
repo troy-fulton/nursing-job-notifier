@@ -1,16 +1,19 @@
-"""Webpage scraper with email notification."""
+"""Webpage scraper with Gmail API notification."""
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
-import smtplib
 import sys
 from email.message import EmailMessage
 from typing import Final
+from urllib.parse import quote
 
 import httpx
 from bs4 import BeautifulSoup
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 from scraper import AlertPredicate, scrape
 
@@ -24,12 +27,14 @@ log = logging.getLogger(__name__)
 # Configuration — set via environment variables
 # ---------------------------------------------------------------------------
 
-# SMTP settings
-SMTP_HOST: Final[str] = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT: Final[int] = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER: Final[str] = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD: Final[str] = os.getenv("SMTP_PASSWORD", "")
-EMAIL_FROM: Final[str] = os.getenv("EMAIL_FROM", SMTP_USER)
+# Gmail API OAuth settings
+GOOGLE_CLIENT_ID: Final[str] = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET: Final[str] = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REFRESH_TOKEN: Final[str] = os.getenv("GOOGLE_REFRESH_TOKEN", "")
+
+# Gmail user for API endpoint. Use "me" for the authenticated account.
+GMAIL_USER: Final[str] = os.getenv("GMAIL_USER", "me")
+EMAIL_FROM: Final[str] = os.getenv("EMAIL_FROM", "")
 
 # Comma-separated list of recipient addresses
 _raw_recipients = os.getenv("EMAIL_RECIPIENTS", "")
@@ -108,24 +113,48 @@ def send_notification(recipients: list[str], alerts: list[str]) -> None:
         log.warning("No recipients configured — skipping email.")
         return
 
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise ValueError("SMTP_USER and SMTP_PASSWORD must be set before sending email.")
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not GOOGLE_REFRESH_TOKEN:
+        raise ValueError(
+            "GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN must be set "
+            "before sending email."
+        )
 
     subject = f"Job alert: {len(alerts)} new match(es) found!"
     body = "The following alerts were triggered:\n\n" + "\n\n".join(f"• {msg}" for msg in alerts)
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = EMAIL_FROM
+    msg["From"] = EMAIL_FROM or GMAIL_USER
     msg["To"] = ", ".join(recipients)
     msg.set_content(body)
 
-    log.info("Connecting to %s:%d …", SMTP_HOST, SMTP_PORT)
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.login(SMTP_USER, SMTP_PASSWORD)
-        smtp.send_message(msg)
+    creds = Credentials(
+        token=None,
+        refresh_token=GOOGLE_REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    )
+    creds.refresh(Request())
+    if not creds.token:
+        raise ValueError("Failed to obtain a Gmail API access token.")
+
+    encoded_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
+    payload = {"raw": encoded_message}
+    user_path = quote(GMAIL_USER, safe="")
+    api_url = f"https://gmail.googleapis.com/gmail/v1/users/{user_path}/messages/send"
+
+    with httpx.Client(timeout=30) as client:
+        response = client.post(
+            api_url,
+            headers={
+                "Authorization": f"Bearer {creds.token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        response.raise_for_status()
 
     log.info("Email sent to: %s", ", ".join(recipients))
 
@@ -138,7 +167,7 @@ def send_notification(recipients: list[str], alerts: list[str]) -> None:
 def main() -> None:
     alerts: list[str] = []
 
-    send_notification(EMAIL_RECIPIENTS, ["Test alert: This is a test email to verify the notification system is working."])
+    send_notification(EMAIL_RECIPIENTS, ["Test alert: This is a test email to confirm the notification system is working."])
 
     for url, predicate in SITES:
         try:
@@ -156,7 +185,7 @@ def main() -> None:
     if alerts:
         try:
             send_notification(EMAIL_RECIPIENTS, alerts)
-        except (smtplib.SMTPException, ValueError, OSError) as exc:
+        except (httpx.HTTPError, ValueError, OSError) as exc:
             log.error("Failed to send email: %s", exc)
             sys.exit(1)
     else:
